@@ -10,34 +10,25 @@ from io import BytesIO
 import psycopg2
 from psycopg2 import sql
 
-# --- Helper to read OpenFaaS secrets ---
-def read_secret(secret_name, default=None):
-    secret_path = f"/var/openfaas/secrets/{secret_name}"
-    try:
-        with open(secret_path, "r") as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return os.getenv(secret_name.upper(), default)
-
-# --- Configuration et Initialisation (via Secrets Kubernetes) ---
-ENCRYPTION_KEY = read_secret("encryption_key", "qndx3Dv5HwpBO1CYytW7SNQe19qjMDJvN2nXMB9Dhaw=").encode()
+# --- Configuration et Initialisation (via ENV uniquement, pas de secrets OpenFaaS) ---
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "qndx3Dv5HwpBO1CYytW7SNQe19qjMDJvN2nXMB9Dhaw=").encode()
 cipher_suite = Fernet(ENCRYPTION_KEY)
 
-DB_HOST = read_secret("db_host", "postgresql.database.svc.cluster.local")
-DB_NAME = read_secret("db_name", "your_database_name")
-DB_USER = read_secret("db_user", "user")
-DB_PASSWORD = read_secret("db_password", "votreMotDePasseFort")
+DB_HOST = os.getenv("DB_HOST", "postgresql.database.svc.cluster.local")
+DB_NAME = os.getenv("DB_NAME", "your_database_name")
+DB_USER = os.getenv("DB_USER", "user")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "votreMotDePasseFort")
 
 # --- Fonctions utilitaires ---
 
 def generate_secure_password(length=24):
-    """Génère un mot de passe sécurisé."""
+    """Genère un mot de passe securise."""
     characters = string.ascii_letters + string.digits + string.punctuation
     password = ''.join(secrets.choice(characters) for i in range(length))
     return password
 
 def generate_qr_code_base64(data):
-    """Génère un QR code à partir des données et le retourne en base64."""
+    """Genère un QR code à partir des donnees et le retourne en base64."""
     qr = qrcode.QRCode(
         version=1,
         error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -111,7 +102,7 @@ def handle(data):
             return TEMPLATE_FORM, 200, {'Content-Type': 'text/html'}
         username = req["username"].strip()
 
-        # 1. Vérifier si l'utilisateur existe déjà (bonne pratique)
+        # 1. Verifier si l'utilisateur existe dejà (bonne pratique)
         with psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASSWORD) as conn:
             with conn.cursor() as cur:
                 # Always ensure the users table exists before querying or inserting
@@ -130,9 +121,9 @@ def handle(data):
                 if cur.fetchone()[0] > 0:
                     return json.dumps({"status": "error", "message": f"User '{username}' already exists."}), 409
 
-        # 2. Générer le mot de passe sécurisé et le secret 2FA
+        # 2. Generer le mot de passe securise et le secret 2FA
         generated_password = generate_secure_password()
-        # Clé secrète pour le TOTP. Label pour l'application TOTP (ex: Google Authenticator)
+        # Cle secrète pour le TOTP. Label pour l'application TOTP (ex: Google Authenticator)
         # Format: otpauth://totp/Label:user@domain?secret=SECRET&issuer=IssuerName
         totp_secret = pyotp.random_base32()
         totp_uri = pyotp.totp.TOTP(totp_secret).provisioning_uri(
@@ -153,13 +144,13 @@ def handle(data):
                 )
                 conn.commit()
 
-        # 5. Générer les QR codes
+        # 5. Generer les QR codes
         # Le QR code du mot de passe peut être une simple chaîne de texte
         password_qr_b64 = generate_qr_code_base64(generated_password)
         # Le QR code 2FA utilise l'URI de provisionnement
         totp_qr_b64 = generate_qr_code_base64(totp_uri)
 
-        # 6. Retourner la réponse
+        # 6. Retourner la reponse
         return json.dumps({
             "status": "success",
             "message": (

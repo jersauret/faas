@@ -1,7 +1,7 @@
 version: 1.0
 provider:
   name: openfaas
-  gateway: http://192.168.67.2:32555 # Corrigé avec le bon port du service OpenFaaS Gateway
+  gateway: http://192.168.67.2:32555 # Corrige avec le bon port du service OpenFaaS Gateway
   namespace: openfaas-fn
 functions:
   create-account:
@@ -18,6 +18,26 @@ functions:
     lang: python3-flask
     handler: ./authenticate-user
     image: jersauret/authenticate-user:latest
+    environment:
+      DB_HOST: postgresql.database.svc.cluster.local
+      DB_NAME: your_database_name
+      DB_USER: "user"
+      DB_PASSWORD: "votreMotDePasseFort"
+      ENCRYPTION_KEY: "qndx3Dv5HwpBO1CYytW7SNQe19qjMDJvN2nXMB9Dhaw="
+  renew-credentials:
+    lang: python3-flask
+    handler: ./renew-credentials
+    image: jersauret/renew-credentials:latest
+    environment:
+      DB_HOST: postgresql.database.svc.cluster.local
+      DB_NAME: your_database_name
+      DB_USER: "user"
+      DB_PASSWORD: "votreMotDePasseFort"
+      ENCRYPTION_KEY: "qndx3Dv5HwpBO1CYytW7SNQe19qjMDJvN2nXMB9Dhaw="
+  block-expired:
+    lang: python3-flask
+    handler: ./block-expired
+    image: jersauret/block-expired:latest
     environment:
       DB_HOST: postgresql.database.svc.cluster.local
       DB_NAME: your_database_name
