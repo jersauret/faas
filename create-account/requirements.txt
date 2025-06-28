@@ -1,0 +1,5 @@
+psycopg2-binary
+pyotp
+qrcode[pil]
+cryptography
+Flask
