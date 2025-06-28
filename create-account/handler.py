@@ -91,7 +91,7 @@ TEMPLATE_FORM = '''
         .then(response => response.json())
         .then(data => {
             if(data.status === 'success') {
-                document.body.innerHTML = `<div class='container'><h2>Account Created</h2><p>${data.message}</p><p><b>Username:</b> ${data.username}</p><p><b>Password QR:</b><br><img src='${data.password_qr_code}' /></p><p><b>2FA QR:</b><br><img src='${data["2fa_qr_code"]}' /></p><div class='footer'>Service provided by COFREPA Cloud</div></div>`;
+                document.body.innerHTML = `<div class='container'><h2>Account Created</h2><p>${data.message}</p><p><b>Username:</b> ${data.username}</p><p><b>Password QR:</b><br><img src='${data.password_qr_code}' style='max-width:100%;height:auto;' /></p><p><b>2FA QR:</b><br><img src='${data["2fa_qr_code"]}' style='max-width:100%;height:auto;' /></p><div class='footer'>Service provided by COFREPA Cloud</div></div>`;
             } else {
                 alert(data.message);
             }

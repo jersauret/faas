@@ -14,3 +14,13 @@ functions:
       DB_USER: "user"
       DB_PASSWORD: "votreMotDePasseFort"
       ENCRYPTION_KEY: "qndx3Dv5HwpBO1CYytW7SNQe19qjMDJvN2nXMB9Dhaw="
+  authenticate-user:
+    lang: python3-flask
+    handler: ./authenticate-user
+    image: jersauret/authenticate-user:latest
+    environment:
+      DB_HOST: postgresql.database.svc.cluster.local
+      DB_NAME: your_database_name
+      DB_USER: "user"
+      DB_PASSWORD: "votreMotDePasseFort"
+      ENCRYPTION_KEY: "qndx3Dv5HwpBO1CYytW7SNQe19qjMDJvN2nXMB9Dhaw="
