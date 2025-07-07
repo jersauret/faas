@@ -1,3 +1,4 @@
+import base64
 import os
 import json
 from datetime import datetime, timedelta
@@ -40,6 +41,17 @@ def generate_qr_code_base64(data):
 
 def handle(data):
     try:
+        from flask import request
+        
+        # If GET request and we have a username parameter, show form with prefilled username
+        if request.method == 'GET' and request.args.get('username'):
+            username = request.args.get('username')
+            html = load_renew_form()
+            html = html.replace('<input type="text" id="username" name="username" required />', 
+                              f'<input type="text" id="username" name="username" value="{username}" required />')
+            return html, 200, {'Content-Type': 'text/html'}
+            
+        # If no data, return the empty form
         req = json.loads(data) if data else {}
         username = req.get("username", "").strip()
         if not username:
@@ -47,14 +59,14 @@ def handle(data):
         with psycopg2.connect(host=DB_HOST, database=DB_NAME, user=DB_USER, password=DB_PASSWORD) as conn:
             with conn.cursor() as cur:
                 cur.execute("""
-                    SELECT id, created_at FROM users WHERE username = %s
+                    SELECT id, created_at, expiration_time FROM users WHERE username = %s
                 """, [username])
                 row = cur.fetchone()
                 if not row:
                     return json.dumps({"status": "error", "message": "Utilisateur inconnu. (COFREPA Cloud)"}), 404
-                user_id, created_at = row
+                user_id, created_at, expiration_time = row
                 # Verification expiration
-                if created_at is None or (datetime.utcnow() - created_at) < MAX_CREDENTIAL_AGE:
+                if created_at is None or expiration_time > datetime.now():
                     return json.dumps({"status": "error", "message": "Les credentials ne sont pas expires. (COFREPA Cloud)"}), 400
                 # Générer nouveaux credentials
                 new_password = ''.join(pyotp.random_base32()[:24])
@@ -66,7 +78,7 @@ def handle(data):
                 )
                 # Mettre à jour l'utilisateur
                 cur.execute("""
-                    UPDATE users SET encrypted_password=%s, totp_secret=%s, created_at=NOW() WHERE id=%s
+                    UPDATE users SET encrypted_password=%s, totp_secret=%s, created_at=NOW(), expiration_time= NOW() + INTERVAL '2 minutes', status='active' WHERE id=%s
                 """, [new_encrypted_password, new_totp_secret, user_id])
                 conn.commit()
                 # Générer QR codes
@@ -76,6 +88,7 @@ def handle(data):
             "status": "success",
             "message": "Credentials renouvelés avec succès. Veuillez scanner les nouveaux QR codes pour votre mot de passe et 2FA. (COFREPA Cloud)",
             "username": username,
+            "password": new_password,  # Add the actual password
             "password_qr_code": f"data:image/png;base64,{password_qr_b64}",
             "2fa_qr_code": f"data:image/png;base64,{totp_qr_b64}"
         }), 200

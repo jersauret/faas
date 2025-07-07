@@ -10,7 +10,8 @@
         button { width: 100%; padding: 10px; background: #2980b9; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
         button:hover { background: #3498db; }
         .footer { text-align: center; margin-top: 20px; color: #888; font-size: 13px; }
-        img.qr { max-width: 100%; height: auto; }
+        .success { color: #27ae60; }
+        .error { color: #e74c3c; }
     </style>
 </head>
 <body>
@@ -24,6 +25,15 @@
         <div class="footer">Service fourni par COFREPA Cloud</div>
     </div>
     <script>
+    // Auto-fill username from URL parameters
+    document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+        if (username) {
+            document.getElementById('username').value = username;
+        }
+    });
+
     function submitRenew(event) {
         event.preventDefault();
         const username = document.getElementById('username').value;
@@ -35,14 +45,57 @@
         .then(response => response.json())
         .then(data => {
             if(data.status === 'success') {
-                document.body.innerHTML = `<div class='container'><h2>Renouvellement reussi</h2><p>${data.message}</p><p><b>Username:</b> ${data.username}</p><p><b>Nouveau mot de passe (QR):</b><br><img class='qr' src='${data.password_qr_code}' /></p><p><b>Nouveau 2FA (QR):</b><br><img class='qr' src='${data["2fa_qr_code"]}' /></p><div class='footer'>Service fourni par COFREPA Cloud</div></div>`;
+                document.body.innerHTML = `
+                    <div class='container'>
+                        <h2>Credentials Renewed Successfully</h2>
+                        <p class="success">${data.message}</p>
+                        <div style="margin: 20px 0;">
+                            <h3>Your New Credentials</h3>
+                            <p><b>Username:</b> ${data.username}</p>
+                            <p><b>Password:</b> ${data.password}</p>
+                            <div style="margin: 20px 0;">
+                                <h4>Password QR Code</h4>
+                                <img src='${data.password_qr_code}' style='max-width:100%;height:auto;margin:20px auto;display:block;' alt="Password QR Code" />
+                                <h4>2FA Setup QR Code</h4>
+                                <p>Scan this QR code with your authenticator app:</p>
+                                <img src='${data["2fa_qr_code"]}' style='max-width:100%;height:auto;margin:20px auto;display:block;' alt="2FA QR Code" />
+                            </div>
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="/function/authenticate-user?renewed=true&username=${encodeURIComponent(data.username)}" class="button" style="display: inline-block; padding: 10px 20px; background: #2980b9; color: #fff; text-decoration: none; border-radius: 4px;">
+                                    Return to Login
+                                </a>
+                            </div>
+                        </div>
+                        <div class='footer'>Powered by COFREPA Cloud</div>
+                    </div>`;
             } else {
-                alert(data.message);
+                document.body.innerHTML = `
+                    <div class='container'>
+                        <h2>Error</h2>
+                        <p class="error">${data.message}</p>
+                        <div style="text-align: center; margin-top: 20px;">
+                            <a href="/function/renew-credentials" class="button" style="display: inline-block; padding: 10px 20px; background: #2980b9; color: #fff; text-decoration: none; border-radius: 4px;">
+                                Try Again
+                            </a>
+                        </div>
+                        <div class='footer'>Powered by COFREPA Cloud</div>
+                    </div>`;
             }
         })
-        .catch(() => alert('Erreur reseau.'));
+        .catch(error => {
+            document.body.innerHTML = `
+                <div class='container'>
+                    <h2>Error</h2>
+                    <p class="error">A network error occurred. Please try again.</p>
+                    <div style="text-align: center; margin-top: 20px;">
+                        <a href="/function/renew-credentials" class="button" style="display: inline-block; padding: 10px 20px; background: #2980b9; color: #fff; text-decoration: none; border-radius: 4px;">
+                            Try Again
+                        </a>
+                    </div>
+                    <div class='footer'>Powered by COFREPA Cloud</div>
+                </div>`;
+        });
     }
     </script>
 </body>
 </html>
-

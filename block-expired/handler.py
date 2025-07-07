@@ -59,27 +59,34 @@ def handle(data):
                         encrypted_password TEXT NOT NULL,
                         totp_secret TEXT NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        status VARCHAR(32) DEFAULT 'active'
+                        status VARCHAR(32) DEFAULT 'active',
+                        expiration_time TIMESTAMP
                     );
                 """)
                 conn.commit()
-                cur.execute("SELECT id, encrypted_password, totp_secret, created_at, status FROM users WHERE username = %s", [username])
+                cur.execute("SELECT id, encrypted_password, totp_secret, created_at, status, expiration_time FROM users WHERE username = %s", [username])
                 row = cur.fetchone()
                 if not row:
                     log_audit(username, "login_attempt", "user_not_found", conn)
                     return json.dumps({"status": "error", "message": "Utilisateur inconnu. (COFREPA Cloud)"}), 401
-                user_id, encrypted_password, totp_secret, created_at, user_status = row
+                user_id, encrypted_password, totp_secret, created_at, user_status, expiration_time = row
                 # Blocage si status expired
                 if user_status == "expired":
                     log_audit(username, "login_attempt", "account_expired_blocked", conn)
                     return json.dumps({"status": "expired", "message": "Compte bloque (credentials expires). Veuillez renouveler vos accès. (COFREPA Cloud)", "redirect": "/renew-credentials"}), 403
                 # Verification expiration
-                if created_at is None or (datetime.utcnow() - created_at) > MAX_CREDENTIAL_AGE:
+                if created_at is None or (datetime.now() - created_at) > MAX_CREDENTIAL_AGE:
                     # Marquer le compte comme expire
                     cur.execute("UPDATE users SET status='expired' WHERE id=%s", [user_id])
                     conn.commit()
                     log_audit(username, "login_attempt", "account_expired_blocked", conn)
                     return json.dumps({"status": "expired", "message": "Compte bloque (credentials expires). Veuillez renouveler vos accès. (COFREPA Cloud)", "redirect": "/renew-credentials"}), 403
+                # Check expiration time
+                if expiration_time and expiration_time < datetime.now():
+                    cur.execute("UPDATE users SET status='expired' WHERE id=%s", [user_id])
+                    conn.commit()
+                    log_audit(username, "login_attempt", "account_expired_blocked", conn)
+                    return json.dumps({"status": "expired", "message": "Votre compte a expiré. Veuillez renouveler vos accès.", "redirect": "/renew-access"}), 403
                 # Verification mot de passe
                 try:
                     decrypted_password = cipher_suite.decrypt(encrypted_password.encode()).decode()
